@@ -10,8 +10,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "./node_modules/.bin/ts-node -r dotenv/config --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' prisma/seed.ts",
     "db:studio": "prisma studio",
-    "generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "generate": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
