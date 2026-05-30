@@ -2,6 +2,9 @@
   "name": "@lms/api",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "../../node_modules/.bin/ts-node-dev --respawn --transpile-only --compiler-options '{\"module\":\"commonjs\"}' src/index.ts",
     "build": "tsc",
