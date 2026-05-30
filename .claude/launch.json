@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "/Users/kanishgarg/Desktop/lms2/apps/web/node_modules/.bin/next",
+      "runtimeArgs": ["dev", "--port", "3001"],
+      "cwd": "/Users/kanishgarg/Desktop/lms2/apps/web",
+      "port": 3001,
+      "autoPort": false
+    }
+  ]
+}

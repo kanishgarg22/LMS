@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "LMS - Labour Manager",
+    "slug": "lms-labour-manager",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2563eb"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2563eb"
+      },
+      "package": "com.lms.labourmanager",
+      "permissions": ["RECORD_AUDIO", "CAMERA", "READ_EXTERNAL_STORAGE"]
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lms.labourmanager"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        { "icon": "./assets/icon.png", "color": "#2563eb" }
+      ]
+    ],
+    "scheme": "lms",
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
