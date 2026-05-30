@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { cn } from '@/lib/utils';
 import {
   Users, Calendar, IndianRupee,
-  Menu, X, LogOut, Sun, Moon,
+  Menu, X, Sun, Moon,
   ChevronRight, Building2
 } from 'lucide-react';
 
@@ -19,25 +19,13 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, company, logout, isAuthenticated } = useAuthStore();
+  const { user, company } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace('/login');
-  }, [isAuthenticated, router]);
-
-  useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
-
-  const handleLogout = () => {
-    logout();
-    router.replace('/login');
-  };
-
-  if (!isAuthenticated) return null;
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
@@ -104,9 +92,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.name}</p>
               <p className="text-xs text-gray-400 truncate">{user?.role}</p>
             </div>
-            <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition-colors" title="Logout">
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </aside>

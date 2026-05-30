@@ -16,14 +16,13 @@ api.interceptors.request.use(config => {
   return config;
 });
 
-// Response interceptor — handle auth errors
+// Response interceptor — on 401 clear stale token (auto-login will refresh on next page load)
 api.interceptors.response.use(
   res => res,
   err => {
     if (err.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('lms_token');
-      localStorage.removeItem('lms_user');
-      window.location.href = '/login';
+      localStorage.removeItem('lms_auth');
     }
     return Promise.reject(err);
   }
