@@ -1,0 +1,249 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+// Seed configuration
+// Run: npm run db:seed  (from apps/api)
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Company ──────────────────────────────────────────────────────────────────
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  logo      String?
+  gstin     String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  workers    Worker[]
+  attendances Attendance[]
+  payrolls   PayrollRecord[]
+  advances   Advance[]
+  payments   Payment[]
+  auditLogs  AuditLog[]
+
+  @@map("companies")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(VIEWER)
+  isActive     Boolean  @default(true)
+  fcmToken     String?
+  companyId    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  attendances  Attendance[] @relation("MarkedBy")
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+// ─── Worker ───────────────────────────────────────────────────────────────────
+model Worker {
+  id            String         @id @default(cuid())
+  fullName      String
+  phone         String
+  address       String?
+  joiningDate   DateTime
+  category      WorkerCategory
+  dailyWage     Decimal?       @db.Decimal(10, 2)
+  monthlySalary Decimal?       @db.Decimal(10, 2)
+  profilePhoto         String?
+  notes                String?
+  overtimeRate         Decimal?       @db.Decimal(10, 2)
+  lateChargeRate       Decimal?       @db.Decimal(10, 2)
+  lateChargeUnit       LateChargeUnit @default(PER_MINUTE)
+  isActive             Boolean        @default(true)
+  companyId            String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  company      Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  attendances  Attendance[]
+  payrolls     PayrollRecord[]
+  advances     Advance[]
+  payments     Payment[]
+
+  @@index([companyId])
+  @@index([phone])
+  @@map("workers")
+}
+
+enum WorkerCategory {
+  DAILY_WAGE
+  MONTHLY_SALARY
+}
+
+enum LateChargeUnit {
+  PER_MINUTE
+  PER_HOUR
+}
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+model Attendance {
+  id            String           @id @default(cuid())
+  workerId      String
+  date          DateTime         @db.Date
+  status        AttendanceStatus @default(PRESENT)
+  overtime         OvertimeStatus   @default(NONE)
+  overtimeHours    Decimal?         @db.Decimal(4, 2)
+  lateMinutes      Int?
+  halfDaySession   String?          // 'M' | 'E' — which half for HALF_DAY records
+  notes            String?
+  markedById    String
+  companyId     String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  worker    Worker  @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  markedBy  User    @relation("MarkedBy", fields: [markedById], references: [id])
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([workerId, date])
+  @@index([companyId, date])
+  @@index([workerId])
+  @@map("attendances")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  HOLIDAY
+  LEAVE
+}
+
+enum OvertimeStatus {
+  NONE
+  OT
+}
+
+// ─── Payroll ──────────────────────────────────────────────────────────────────
+model PayrollRecord {
+  id                String   @id @default(cuid())
+  workerId          String
+  month             Int
+  year              Int
+  totalDays         Int
+  presentDays       Int      @default(0)
+  absentDays        Int      @default(0)
+  lateDays          Int      @default(0)
+  halfDays          Int      @default(0)
+  overtimeHours     Decimal  @default(0) @db.Decimal(6, 2)
+  basicSalary       Decimal  @db.Decimal(10, 2)
+  overtimePay       Decimal  @default(0) @db.Decimal(10, 2)
+  advanceDeduction  Decimal  @default(0) @db.Decimal(10, 2)
+  bonuses           Decimal  @default(0) @db.Decimal(10, 2)
+  deductions        Decimal  @default(0) @db.Decimal(10, 2)
+  netSalary         Decimal  @db.Decimal(10, 2)
+  carryForward      Decimal  @default(0) @db.Decimal(10, 2)
+  carryForwardNote  String?
+  isPaid            Boolean  @default(false)
+  paidAt            DateTime?
+  notes             String?
+  companyId         String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  worker   Worker  @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([workerId, month, year])
+  @@index([companyId, month, year])
+  @@map("payroll_records")
+}
+
+// ─── Advance ──────────────────────────────────────────────────────────────────
+model Advance {
+  id             String   @id @default(cuid())
+  workerId       String
+  amount         Decimal  @db.Decimal(10, 2)
+  purpose        String?
+  date           DateTime @db.Date
+  repaidAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  isFullyRepaid  Boolean  @default(false)
+  companyId      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  worker   Worker  @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([workerId])
+  @@index([companyId])
+  @@map("advances")
+}
+
+// ─── Payment ──────────────────────────────────────────────────────────────────
+model Payment {
+  id        String      @id @default(cuid())
+  workerId  String
+  type      PaymentType
+  amount    Decimal     @db.Decimal(10, 2)
+  date      DateTime    @db.Date
+  month     Int?
+  year      Int?
+  notes     String?
+  companyId String
+  createdAt DateTime    @default(now())
+
+  worker   Worker  @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([workerId])
+  @@index([companyId])
+  @@map("payments")
+}
+
+enum PaymentType {
+  SALARY
+  ADVANCE
+  OVERTIME
+  BONUS
+  DEDUCTION
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  action    String
+  entity    String
+  entityId  String?
+  oldData   Json?
+  newData   Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([userId])
+  @@map("audit_logs")
+}

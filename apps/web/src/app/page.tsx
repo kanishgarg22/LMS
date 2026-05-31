@@ -7,24 +7,14 @@ import { authApi } from '@/lib/api';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, setAuth } = useAuthStore();
+  const { setAuth } = useAuthStore();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/attendance');
-      return;
-    }
-    // Silent auto-login — user never sees a login screen
-    const email    = process.env.NEXT_PUBLIC_APP_EMAIL    || 'admin@sharma.com';
-    const password = process.env.NEXT_PUBLIC_APP_PASSWORD || 'admin123';
-    authApi.login(email, password)
-      .then(res => {
-        const { token, user, company } = res.data.data;
-        setAuth(token, user, company);
-        router.replace('/attendance');
-      })
-      .catch(() => router.replace('/attendance'));
-  }, [isAuthenticated, router, setAuth]);
+    authApi.login('', '')
+      .then(res => { setAuth(res.data.data.token, res.data.data.user, res.data.data.company); })
+      .catch(() => {})
+      .finally(() => router.replace('/attendance'));
+  }, [router, setAuth]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">

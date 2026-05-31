@@ -2,12 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    remotePatterns: [
-      { protocol: 'http',  hostname: 'localhost' },
-      { protocol: 'https', hostname: '*.railway.app' },
-      { protocol: 'https', hostname: '*.up.railway.app' },
-    ],
+    remotePatterns: [{ protocol: 'http', hostname: 'localhost' }],
   },
+  // pdfkit uses Node.js built-ins — mark as server-only
+  serverExternalPackages: ['pdfkit'],
 };
 
 module.exports = nextConfig;
