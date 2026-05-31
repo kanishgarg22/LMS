@@ -84,7 +84,7 @@ export default function WorkersPage() {
             {filtered.map(w => (
               <Link
                 key={w.id}
-                href={`/workers/${w.id}`}
+                href={`/workers/detail?id=${w.id}`}
                 className="bg-white rounded-2xl border border-gray-100 p-4 hover:border-primary/30 hover:shadow-sm transition-all"
               >
                 <div className="flex items-start gap-3">

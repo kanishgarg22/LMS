@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useMemo, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
 import { useStore } from '@/lib/store';
 import { formatCurrency, formatDate, getAttStatusClass, getAttStatusShort } from '@/lib/utils';
@@ -9,8 +9,9 @@ import Link from 'next/link';
 import { ArrowLeft, Phone, MapPin, Calendar, IndianRupee, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function WorkerAccountPage() {
-  const { id } = useParams<{ id: string }>();
+function WorkerDetail() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id') ?? '';
   const workers = useStore(s => s.workers);
   const attendance = useStore(s => s.attendance);
   const advances = useStore(s => s.advances);
@@ -60,7 +61,7 @@ export default function WorkerAccountPage() {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </Link>
           <div className="flex-1"><h2 className="text-xl font-bold text-gray-900">Worker Account</h2></div>
-          <Link href={`/workers/${id}/edit`} className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium text-gray-700 transition-colors">
+          <Link href={`/workers/edit?id=${id}`} className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium text-gray-700 transition-colors">
             <Pencil className="w-3.5 h-3.5" /> Edit
           </Link>
         </div>
@@ -164,13 +165,12 @@ export default function WorkerAccountPage() {
 
         {activeTab === 'payroll' && (
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            {workerPayrolls.length === 0 ? <p className="text-center text-gray-400 py-8">No payroll records. Generate payroll from the Payment page.</p> : (
+            {workerPayrolls.length === 0 ? <p className="text-center text-gray-400 py-8">No payroll records. Generate from Payment page.</p> : (
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Month</th>
                     <th className="text-right px-4 py-3 font-medium text-gray-600">Net Salary</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">Days</th>
                     <th className="text-right px-4 py-3 font-medium text-gray-600">Status</th>
                   </tr>
                 </thead>
@@ -179,7 +179,6 @@ export default function WorkerAccountPage() {
                     <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="px-4 py-2.5">{new Date(p.year,p.month-1).toLocaleString('en-IN',{month:'long',year:'numeric'})}</td>
                       <td className="px-4 py-2.5 text-right font-semibold">{formatCurrency(p.netSalary)}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-500">{p.presentDays}/{p.totalDays}</td>
                       <td className="px-4 py-2.5 text-right"><span className={cn('px-2 py-0.5 rounded-full text-xs font-medium',p.isPaid?'bg-green-100 text-green-700':'bg-orange-100 text-orange-700')}>{p.isPaid?'Paid':'Pending'}</span></td>
                     </tr>
                   ))}
@@ -218,4 +217,8 @@ export default function WorkerAccountPage() {
       </div>
     </AppShell>
   );
+}
+
+export default function WorkerDetailPage() {
+  return <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}><WorkerDetail /></Suspense>;
 }
