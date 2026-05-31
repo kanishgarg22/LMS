@@ -6,7 +6,13 @@ import OpenAI from 'openai';
 export const aiRouter = Router();
 aiRouter.use(authenticate);
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Lazy init — avoids crash on startup when OPENAI_API_KEY is not set
+let _openai: OpenAI | null = null;
+const getOpenAI = () => {
+  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not configured');
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _openai;
+};
 
 // Tools that the AI assistant can call
 const AI_TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
@@ -317,7 +323,7 @@ When marking attendance or performing actions, use the available tools.
 Be concise, helpful, and professional. Use Indian currency (₹) for amounts.
 Today's date is ${new Date().toLocaleDateString('en-IN')}.`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -350,7 +356,7 @@ Today's date is ${new Date().toLocaleDateString('en-IN')}.`;
         });
       }
 
-      const finalCompletion = await openai.chat.completions.create({
+      const finalCompletion = await getOpenAI().chat.completions.create({
         model: 'gpt-4o-mini',
         messages: toolCallMessages,
       });
@@ -388,7 +394,7 @@ aiRouter.post('/voice', async (req: AuthRequest, res: Response, next: NextFuncti
     }
 
     const fs = await import('fs');
-    const transcription = await openai.audio.transcriptions.create({
+    const transcription = await getOpenAI().audio.transcriptions.create({
       file: fs.createReadStream(audioFile.path) as unknown as File,
       model: 'whisper-1',
       language: 'hi',

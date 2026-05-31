@@ -8,10 +8,13 @@ const baseClient =
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prismaBase = baseClient;
+// In development keep the client alive across hot-reloads.
+// In serverless (Vercel) we do NOT cache — each invocation gets a fresh connection.
+if (process.env.NODE_ENV === 'development') {
+  globalForPrisma.prismaBase = baseClient;
+}
 
 // Auto-retry once on Neon sleep-wake P1001 errors.
-// Correct Prisma 5 syntax: query.$allModels.$allOperations
 export const prisma = baseClient.$extends({
   query: {
     $allModels: {
@@ -21,7 +24,7 @@ export const prisma = baseClient.$extends({
         } catch (err: unknown) {
           const msg = (err as Error)?.message ?? '';
           if (msg.includes("Can't reach database server") || msg.includes('P1001')) {
-            await new Promise(r => setTimeout(r, 3000)); // wait for Neon to wake
+            await new Promise(r => setTimeout(r, 3000));
             return await query(args);
           }
           throw err;
@@ -31,7 +34,10 @@ export const prisma = baseClient.$extends({
   },
 }) as unknown as PrismaClient;
 
-// Keep-alive ping every 4 min so Neon never goes to sleep during an active session
-setInterval(async () => {
-  try { await baseClient.$queryRaw`SELECT 1`; } catch { /* ignore */ }
-}, 4 * 60 * 1000);
+// Keep-alive ping: only run in long-lived server mode (local dev / Railway).
+// Never in serverless — would hold the Lambda open indefinitely.
+if (process.env.NODE_ENV === 'development') {
+  setInterval(async () => {
+    try { await baseClient.$queryRaw`SELECT 1`; } catch { /* ignore */ }
+  }, 4 * 60 * 1000);
+}
