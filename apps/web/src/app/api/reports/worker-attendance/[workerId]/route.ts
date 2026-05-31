@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { prisma, getCompanyId, err } from '@/lib/db';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const PDFDocument = require('pdfkit') as new (opts?: object) => NodeJS.EventEmitter & { pipe: (s: unknown) => void; on: (e: string, cb: (c: Buffer) => void) => void; end: () => void; rect: (x:number,y:number,w:number,h:number) => { fill:(c:string)=>{ stroke:(c:string)=>void }; fillAndStroke:(a:string,b:string)=>void }; moveTo:(x:number,y:number) => { lineTo:(x:number,y:number) => { strokeColor:(c:string) => { lineWidth:(n:number) => { stroke:()=>void } } } }; font:(f:string)=>unknown; fontSize:(n:number)=>unknown; fillColor:(c:string)=>unknown; text:(s:string,x:number,y:number,o?:object)=>unknown; addPage:()=>void };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const PDFDocument = require('pdfkit') as new (opts?: object) => any;
 
 export async function GET(req: NextRequest, { params }: { params: { workerId: string } }) {
   try {
