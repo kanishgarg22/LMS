@@ -3,15 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
-import { workersApi } from '@/lib/api';
+import { useStore } from '@/lib/store';
 import Link from 'next/link';
 import { ArrowLeft, Save, Zap, Timer } from 'lucide-react';
 
 export default function EditWorkerPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const workers = useStore(s => s.workers);
+  const updateWorker = useStore(s => s.updateWorker);
+  const deleteWorker = useStore(s => s.deleteWorker);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     fullName: '', phone: '', address: '', joiningDate: '',
@@ -21,11 +22,11 @@ export default function EditWorkerPage() {
   });
 
   useEffect(() => {
-    workersApi.get(id as string).then(res => {
-      const w = res.data.data;
+    const w = workers.find(x => x.id === id);
+    if (w) {
       setForm({
         fullName: w.fullName, phone: w.phone, address: w.address || '',
-        joiningDate: new Date(w.joiningDate).toISOString().split('T')[0],
+        joiningDate: w.joiningDate,
         category: w.category,
         dailyWage: w.dailyWage ? String(w.dailyWage) : '',
         monthlySalary: w.monthlySalary ? String(w.monthlySalary) : '',
@@ -34,35 +35,41 @@ export default function EditWorkerPage() {
         lateChargeUnit: w.lateChargeUnit || 'PER_MINUTE',
         notes: w.notes || '', isActive: String(w.isActive),
       });
-    }).finally(() => setLoading(false));
-  }, [id]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-    try {
-      const fd = new FormData();
-      Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v); });
-      await workersApi.update(id as string, fd);
-      router.push(`/workers/${id}`);
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } } };
-      setError(e?.response?.data?.error || 'Failed to update worker');
-    } finally {
-      setSaving(false);
     }
+  }, [id, workers]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    updateWorker(id as string, {
+      fullName: form.fullName.trim(),
+      phone: form.phone.trim(),
+      address: form.address.trim() || undefined,
+      joiningDate: form.joiningDate,
+      category: form.category as 'DAILY_WAGE' | 'MONTHLY_SALARY',
+      dailyWage: form.dailyWage ? parseFloat(form.dailyWage) : undefined,
+      monthlySalary: form.monthlySalary ? parseFloat(form.monthlySalary) : undefined,
+      overtimeRate: form.overtimeRate ? parseFloat(form.overtimeRate) : undefined,
+      lateChargeRate: form.lateChargeRate ? parseFloat(form.lateChargeRate) : undefined,
+      lateChargeUnit: form.lateChargeUnit as 'PER_MINUTE' | 'PER_HOUR',
+      notes: form.notes.trim() || undefined,
+      isActive: form.isActive === 'true',
+    });
+    router.push(`/workers/${id}`);
   };
 
-  if (loading) {
-    return (
-      <AppShell>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </AppShell>
-    );
-  }
+  const handleDelete = () => {
+    if (!confirm('Delete this worker? This cannot be undone.')) return;
+    deleteWorker(id as string);
+    router.push('/workers');
+  };
+
+  const worker = workers.find(x => x.id === id);
+  if (!worker) return (
+    <AppShell>
+      <div className="p-6 text-center text-gray-400">Worker not found</div>
+    </AppShell>
+  );
 
   return (
     <AppShell>
@@ -146,41 +153,29 @@ export default function EditWorkerPage() {
             </div>
           </div>
 
-          {/* Rates Section */}
           <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
             <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Rates & Charges</h3>
-            <p className="text-xs text-gray-400 -mt-2">Optional — used in payroll calculations</p>
-
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-                <Zap className="w-4 h-4 text-blue-500" />
-                Overtime Rate (₹ per hour)
+                <Zap className="w-4 h-4 text-blue-500" /> Overtime Rate (₹ per hour)
               </label>
               <input
-                type="number"
-                value={form.overtimeRate}
+                type="number" value={form.overtimeRate}
                 onChange={e => setForm(p => ({ ...p, overtimeRate: e.target.value }))}
-                placeholder="e.g. 100 (leave blank to auto-calculate)"
-                min="0"
-                step="10"
+                placeholder="leave blank to auto-calculate"
+                min="0" step="10"
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <p className="text-xs text-gray-400 mt-1">If blank, OT is auto-calculated at 1.5× hourly rate</p>
             </div>
-
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
-                <Timer className="w-4 h-4 text-amber-500" />
-                Late Charge
+                <Timer className="w-4 h-4 text-amber-500" /> Late Charge
               </label>
               <div className="flex gap-2">
                 <input
-                  type="number"
-                  value={form.lateChargeRate}
+                  type="number" value={form.lateChargeRate}
                   onChange={e => setForm(p => ({ ...p, lateChargeRate: e.target.value }))}
-                  placeholder="e.g. 2"
-                  min="0"
-                  step="0.5"
+                  placeholder="e.g. 2" min="0" step="0.5"
                   className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <select
@@ -192,18 +187,23 @@ export default function EditWorkerPage() {
                   <option value="PER_HOUR">₹ / hour</option>
                 </select>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Deducted from salary based on late duration marked in attendance</p>
             </div>
           </div>
 
           <button
-            type="submit" disabled={saving}
-            className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3.5 rounded-xl font-semibold hover:bg-primary/90 transition-all disabled:opacity-60"
+            type="submit"
+            className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3.5 rounded-xl font-semibold hover:bg-primary/90 transition-all"
           >
-            <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save Changes'}
+            <Save className="w-4 h-4" /> Save Changes
           </button>
         </form>
+
+        <button
+          onClick={handleDelete}
+          className="w-full mt-3 py-3.5 rounded-xl font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-all"
+        >
+          Delete Worker
+        </button>
       </div>
     </AppShell>
   );

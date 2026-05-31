@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
-import { workersApi } from '@/lib/api';
-import { ArrowLeft, Save, User, Zap, Timer } from 'lucide-react';
+import { useStore } from '@/lib/store';
+import { ArrowLeft, Save, Zap, Timer } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NewWorkerPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const addWorker = useStore(s => s.addWorker);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     fullName: '',
@@ -24,25 +24,29 @@ export default function NewWorkerPage() {
     lateChargeUnit: 'PER_MINUTE',
     notes: '',
   });
-  const [photo, setPhoto] = useState<File | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
-    try {
-      const fd = new FormData();
-      Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v); });
-      if (photo) fd.append('profilePhoto', photo);
-
-      await workersApi.create(fd);
-      router.push('/workers');
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } } };
-      setError(e?.response?.data?.error || 'Failed to create worker');
-    } finally {
-      setLoading(false);
+    if (!form.fullName.trim() || !form.phone.trim() || !form.joiningDate || !form.category) {
+      setError('Full name, phone, joining date and category are required');
+      return;
     }
+    addWorker({
+      fullName: form.fullName.trim(),
+      phone: form.phone.trim(),
+      address: form.address.trim() || undefined,
+      joiningDate: form.joiningDate,
+      category: form.category as 'DAILY_WAGE' | 'MONTHLY_SALARY',
+      dailyWage: form.dailyWage ? parseFloat(form.dailyWage) : undefined,
+      monthlySalary: form.monthlySalary ? parseFloat(form.monthlySalary) : undefined,
+      overtimeRate: form.overtimeRate ? parseFloat(form.overtimeRate) : undefined,
+      lateChargeRate: form.lateChargeRate ? parseFloat(form.lateChargeRate) : undefined,
+      lateChargeUnit: form.lateChargeUnit as 'PER_MINUTE' | 'PER_HOUR',
+      notes: form.notes.trim() || undefined,
+      isActive: true,
+    });
+    router.push('/workers');
   };
 
   return (
@@ -66,21 +70,6 @@ export default function NewWorkerPage() {
           <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
             <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Basic Info</h3>
 
-            {/* Photo */}
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center overflow-hidden">
-                {photo ? (
-                  <img src={URL.createObjectURL(photo)} alt="preview" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-7 h-7 text-gray-400" />
-                )}
-              </div>
-              <label className="cursor-pointer px-4 py-2 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-primary hover:text-primary transition-colors">
-                Upload Photo
-                <input type="file" accept="image/*" className="hidden" onChange={e => setPhoto(e.target.files?.[0] || null)} />
-              </label>
-            </div>
-
             {[
               { label: 'Full Name *', key: 'fullName', type: 'text', placeholder: 'Rahul Kumar' },
               { label: 'Phone Number *', key: 'phone', type: 'tel', placeholder: '9876543210' },
@@ -94,7 +83,6 @@ export default function NewWorkerPage() {
                   onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                   placeholder={f.placeholder}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required={f.label.includes('*')}
                 />
               </div>
             ))}
@@ -126,9 +114,7 @@ export default function NewWorkerPage() {
                     type="button"
                     onClick={() => setForm(p => ({ ...p, category: opt.value }))}
                     className={`p-3 rounded-xl border-2 text-left transition-all ${
-                      form.category === opt.value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-gray-200 hover:border-gray-300'
+                      form.category === opt.value ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <p className="font-medium text-sm text-gray-900">{opt.label}</p>
@@ -149,7 +135,6 @@ export default function NewWorkerPage() {
                   min="0"
                   step="50"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required
                 />
               </div>
             ) : (
@@ -163,7 +148,6 @@ export default function NewWorkerPage() {
                   min="0"
                   step="500"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required
                 />
               </div>
             )}
@@ -180,7 +164,6 @@ export default function NewWorkerPage() {
             </div>
           </div>
 
-          {/* Rates Section */}
           <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
             <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Rates & Charges</h3>
             <p className="text-xs text-gray-400 -mt-2">Optional — used in payroll calculations</p>
@@ -220,23 +203,21 @@ export default function NewWorkerPage() {
                 <select
                   value={form.lateChargeUnit}
                   onChange={e => setForm(p => ({ ...p, lateChargeUnit: e.target.value }))}
-                  className="px-3 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="px-3 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="PER_MINUTE">₹ / minute</option>
                   <option value="PER_HOUR">₹ / hour</option>
                 </select>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Deducted from salary based on late duration marked in attendance</p>
             </div>
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3.5 rounded-xl font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3.5 rounded-xl font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all"
           >
             <Save className="w-4 h-4" />
-            {loading ? 'Saving...' : 'Save Worker'}
+            Save Worker
           </button>
         </form>
       </div>
