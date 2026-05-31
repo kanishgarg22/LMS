@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { calculatePayroll } from './payroll';
 
 export type WorkerCategory = 'DAILY_WAGE' | 'MONTHLY_SALARY';
@@ -193,6 +193,15 @@ export const useStore = create<AppState>()(
           ),
         })),
     }),
-    { name: 'lms_data' }
+    {
+      name: 'lms_data',
+      storage: createJSONStorage(() =>
+        typeof window !== 'undefined' ? localStorage : {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        }
+      ),
+    }
   )
 );
